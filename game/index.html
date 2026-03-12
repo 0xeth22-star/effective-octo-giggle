@@ -324,6 +324,7 @@ const CFG = {
   twitterHandle: 'Bitkinart',      // ← without @
   tweetId:       'TWEET_ID_HERE',  // ← your tweet ID
   indexUrl:      'index.html',     // ← back button target
+  webhookUrl:    '',               // ← paste your endpoint here (Google Form, Airtable, etc.)
 };
 /* ════════════════════════════════════════════════ */
 
@@ -792,13 +793,28 @@ function modalNext() {
     document.getElementById('m-step-tag').textContent = '✓';
     document.getElementById('m-btn').textContent = 'KEEP RUNNING →';
     mStep = 3;
-    // ← send to your backend here
-    console.log('GTD:', {
+    // save best score to localStorage
+    try { 
+      const prev = parseInt(localStorage.getItem('bitkin_best') || '0');
+      if (Math.floor(score) > prev) localStorage.setItem('bitkin_best', Math.floor(score));
+    } catch(e) {}
+
+    // send to webhook
+    const payload = {
       username: document.getElementById('m-user').value.trim(),
       wallet: w,
       score: Math.floor(score),
-      tweetId: CFG.tweetId
-    });
+      tweetId: CFG.tweetId,
+      timestamp: new Date().toISOString(),
+    };
+    if (CFG.webhookUrl) {
+      fetch(CFG.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {}); // fail silently
+    }
+    console.log('GTD submission:', payload);
   } else {
     // keep running after submit
     document.getElementById('gtd-modal').classList.remove('show');
@@ -841,6 +857,7 @@ window.addEventListener('touchend', ()=>{ if(state==='running') P.duck(false); }
    BOOT
 ══════════════════════════════════════════ */
 resize();
+try { best = parseInt(localStorage.getItem('bitkin_best') || '0'); document.getElementById('tb-best').textContent = String(best).padStart(5,'0'); } catch(e) {}
 window.addEventListener('load', ()=>{
   setTimeout(()=>{
     document.getElementById('loader').classList.add('hide');
