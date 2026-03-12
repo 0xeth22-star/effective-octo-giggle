@@ -328,16 +328,11 @@ function spr(data,ox,oy,ps){
 }
 
 /* ══════════════ DIFFICULTY ══════════════ */
-const D = IS_MOBILE ? {
-  startSpd:0.0018,maxSpdAdd:0.002,rampTicks:10000, // very slow start
-  scoreRate:1000/(6*60*60),
-  minGap:180,gapRandom:160,gapSlowdown:8000,        // huge gaps between obstacles
-  hitPad:5,chipYLo:0.26,chipYHi:0.34,maxBottles:1,postGap:18, // forgiving hit box
-} : {
-  startSpd:0.005,maxSpdAdd:0.005,rampTicks:4800,
-  scoreRate:1000/(4.5*60*60),
-  minGap:90,gapRandom:90,gapSlowdown:4500,
-  hitPad:1.5,chipYLo:0.14,chipYHi:0.24,maxBottles:3,postGap:8,
+const D = {
+  startSpd:0.007, maxSpdAdd:0.005, rampTicks:4000,
+  scoreRate:1000/(4*60*60),
+  minGap:100, gapRandom:80, gapSlowdown:4000,
+  hitPad:1.5, chipYLo:0.18, chipYHi:0.26, maxBottles:2, postGap:10,
 };
 
 /* ══════════════ STATE ══════════════ */
@@ -360,11 +355,11 @@ const P = {
     this.vy=0;this.grounded=true;this.ducking=false;this.jumps=0;this.frame=0;
   },
   jump(){
-    const maxJ=IS_MOBILE?2:1;
-    if(this.jumps<maxJ){
+    if(this.jumps<1){
       sfxJump();
-      this.vy=-(H*(IS_MOBILE?0.044:0.048));
-      this.grounded=false;this.jumps++;
+      this.vy = -(H * 0.045);
+      this.grounded = false;
+      this.jumps++;
     }
   },
   duck(on){
@@ -375,7 +370,7 @@ const P = {
   update(){
     this.frame++;
     if(!this.grounded){
-      this.vy+=H*0.002;this.y+=this.vy;
+      this.vy+=H*0.0028;this.y+=this.vy;
       const floor=GND()-this.h;
       if(this.y>=floor){this.y=floor;this.vy=0;this.grounded=true;this.jumps=0;}
     }
@@ -404,13 +399,9 @@ function spawnObs(){
     const bw=BOTTLE[0].length*ps;
     for(let i=0;i<n;i++) obs.push({d:BOTTLE,x:W+10+i*(bw+ps*2),w:bw,h:BOTTLE.length*ps,y:gnd-BOTTLE.length*ps});
   }else{
-    // On mobile skip flying CHIP (hardest obstacle) — spawn stool instead
-    if(IS_MOBILE){
-      obs.push({d:STOOL,x:W+10,w:STOOL[0].length*ps,h:STOOL.length*ps,y:gnd-STOOL.length*ps});
-    }else{
-      const yOff=(D.chipYLo+Math.random()*(D.chipYHi-D.chipYLo))*H;
-      obs.push({d:CHIP,x:W+10,w:CHIP[0].length*ps,h:CHIP.length*ps,y:gnd-yOff});
-    }
+    // CHIP = flying obstacle you duck under. Height tuned per platform.
+    const yOff=(D.chipYLo+Math.random()*(D.chipYHi-D.chipYLo))*H;
+    obs.push({d:CHIP,x:W+10,w:CHIP[0].length*ps,h:CHIP.length*ps,y:gnd-yOff});
   }
 }
 function collides(a,b){
@@ -648,16 +639,33 @@ window.addEventListener('keyup',e=>{if(e.code==='ArrowDown')P.duck(false);});
 
 const btnJump=document.getElementById('btn-jump');
 const btnDuck=document.getElementById('btn-duck');
-btnJump.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  if(state==='running')P.jump();
-  else if(state==='idle')startGame();
-},{passive:false});
+// Jump handled by game-area touchstart above
+btnJump.addEventListener('touchstart',e=>{ e.preventDefault(); },{passive:false});
 btnDuck.addEventListener('touchstart',e=>{e.preventDefault();if(state==='running')P.duck(true);},{passive:false});
 btnDuck.addEventListener('touchend',  e=>{e.preventDefault();P.duck(false);},{passive:false});
-canvas.addEventListener('touchstart',e=>{
+// Tap/swipe anywhere on game area
+let _touchY0=0, _touchDucking=false;
+document.getElementById('game-area').addEventListener('touchstart',e=>{
+  if(e.target.closest('#gtd-modal,.ov')) return;
   e.preventDefault();
-  if(state==='idle')startGame();
+  _touchY0 = e.touches[0].clientY;
+  _touchDucking = false;
+  if(state==='running') P.jump();
+  else if(state==='idle'||state==='dead') startGame();
+},{passive:false});
+
+document.getElementById('game-area').addEventListener('touchmove',e=>{
+  if(state!=='running') return;
+  e.preventDefault();
+  const dy = e.touches[0].clientY - _touchY0;
+  if(dy > 30 && !_touchDucking){ // swipe down > 30px = duck
+    _touchDucking=true;
+    P.duck(true);
+  }
+},{passive:false});
+
+document.getElementById('game-area').addEventListener('touchend',e=>{
+  if(_touchDucking){ P.duck(false); _touchDucking=false; }
 },{passive:false});
 
 /* ══════════════ BOOT ══════════════ */
