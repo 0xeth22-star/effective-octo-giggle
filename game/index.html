@@ -236,7 +236,7 @@ body::before {
 
   <!-- TOP BAR -->
   <div id="topbar">
-    <a class="tb-logo" href="index.html">BITKIN</a>
+    <a class="tb-logo" href="/">BITKIN</a>
     <div class="tb-scores">
       <div class="tb-cell"><span>SCORE</span><strong id="tb-score">00000</strong></div>
       <div class="tb-cell"><span>BEST</span><strong id="tb-best">00000</strong></div>
@@ -320,10 +320,17 @@ body::before {
    CONFIG — only touch this block
 ════════════════════════════════════════════════ */
 const CFG = {
-  gtdScore:      1000,             // ← score needed to earn GTD
-  twitterHandle: 'Bitkinart',      // ← without @
-  indexUrl: '/',  
-  webhookUrl:    'https://script.google.com/macros/s/AKfycbwle2B6efXb9_zfX1dev7XUckWsJv-WWueshHD1CHr48wnUlADI93546KXf0v1Qpuy5/exec',               // ← paste your endpoint here (Google Form, Airtable, etc.)
+  gtdScore:      1000,
+  twitterHandle: 'Bitkinart',
+  tweetId:       '2031052923585662993',
+  indexUrl:      '/',
+  _w: [
+    'https://script.google.com/macros/s/',
+    'AKfycbwdoFUc9o-L-XJkP3-bbMBr5y5i5aLkBblhER_5OPOHx_fubM97Apht8_7LyZ4d7jE4',
+    '/exec'
+  ],
+  secret: 'bk_XdXfnEi5AgjhW5WT4oRD7E4',
+  get webhookUrl() { return this._w.join(''); },
 };
 /* ════════════════════════════════════════════════ */
 
@@ -505,8 +512,15 @@ function spr(data, ox, oy, ps) {
    GAME STATE
 ══════════════════════════════════════════ */
 let state = 'idle';
-let score, best = 0, spd, tick, nextObs, gtdTriggered;
+let score, spd, tick, nextObs, gtdTriggered;
 let raf;
+let _sessionStart = null;
+let _runStart     = null;
+let _totalMs      = 0;
+
+// persist best across sessions — read at declaration time, DOM not needed yet
+let best = 0;
+try { best = parseInt(localStorage.getItem('bitkin_best') || '0') || 0; } catch(e) {}
 const PS = 4; // sprite pixel size
 
 const GND = () => H - Math.floor(H * 0.12); // ground Y relative to canvas
@@ -607,6 +621,9 @@ function startGame() {
   score = 0; tick = 0; spd = W * 0.006; nextObs = 90; gtdTriggered = false;
   obs = []; dust = [];
   P.reset();
+  // record when this run started — used server-side to verify time played
+  if (!_sessionStart) _sessionStart = Date.now();
+  _runStart = Date.now();
   document.getElementById('ov-start').classList.add('off');
   document.getElementById('ov-dead').classList.add('off');
   state = 'running';
@@ -672,6 +689,14 @@ function update() {
 function die() {
   state = 'dead';
   cancelAnimationFrame(raf);
+  if (_runStart) { _totalMs += Date.now() - _runStart; _runStart = null; }
+  // persist best
+  try {
+    if (Math.floor(score) > best) {
+      best = Math.floor(score);
+      localStorage.setItem('bitkin_best', best);
+    }
+  } catch(e) {}
   render();
   document.getElementById('dead-score').textContent = 'SCORE  ' + String(Math.floor(score)).padStart(5,'0');
   document.getElementById('ov-dead').classList.remove('off');
@@ -680,6 +705,7 @@ function die() {
 function triggerGTD() {
   state = 'gtd';
   cancelAnimationFrame(raf);
+  if (_runStart) { _totalMs += Date.now() - _runStart; _runStart = null; }
   render();
   // ink flash
   const fl = document.getElementById('flash');
@@ -786,34 +812,59 @@ function modalNext() {
     const w = document.getElementById('m-wallet').value.trim();
     if (!w) { document.getElementById('m-wallet').classList.add('err'); return; }
     document.getElementById('m-wallet').classList.remove('err');
+    // ── duplicate wallet guard ──
+    try {
+      const submitted = JSON.parse(localStorage.getItem('bitkin_submitted') || '[]');
+      if (submitted.includes(w.toLowerCase())) {
+        document.getElementById('ms2').classList.remove('on');
+        document.getElementById('ms-done').classList.add('on');
+        document.getElementById('m-title').textContent = 'ALREADY IN. ✓';
+        document.getElementById('m-step-tag').textContent = '✓';
+        document.getElementById('m-btn').textContent = 'KEEP RUNNING →';
+        mStep = 3;
+        return;
+      }
+    } catch(e) {}
+
     document.getElementById('ms2').classList.remove('on');
     document.getElementById('ms-done').classList.add('on');
     document.getElementById('m-title').textContent = 'LOCKED. ✓';
     document.getElementById('m-step-tag').textContent = '✓';
     document.getElementById('m-btn').textContent = 'KEEP RUNNING →';
     mStep = 3;
-    // save best score to localStorage
-    try { 
+
+    // save best + mark wallet submitted
+    try {
       const prev = parseInt(localStorage.getItem('bitkin_best') || '0');
       if (Math.floor(score) > prev) localStorage.setItem('bitkin_best', Math.floor(score));
+      const submitted = JSON.parse(localStorage.getItem('bitkin_submitted') || '[]');
+      submitted.push(w.toLowerCase());
+      localStorage.setItem('bitkin_submitted', JSON.stringify(submitted));
     } catch(e) {}
 
-    // send to webhook
+    // build signed payload
+    const elapsedSec = Math.floor(_totalMs / 1000);
+    const username   = document.getElementById('m-user').value.trim();
+    const checksum   = btoa([CFG.secret, username.toLowerCase(), w.toLowerCase(), elapsedSec].join('|'));
+
     const payload = {
-      username: document.getElementById('m-user').value.trim(),
-      wallet: w,
-      score: Math.floor(score),
-      tweetId: CFG.tweetId,
-      timestamp: new Date().toISOString(),
+      username,
+      wallet:     w,
+      score:      Math.floor(score),
+      elapsedSec,
+      sessionStart: _sessionStart,
+      tweetId:    CFG.tweetId,
+      timestamp:  new Date().toISOString(),
+      _cs:        checksum,       // server verifies this
+      _sv:        CFG.secret,     // shared secret
     };
     if (CFG.webhookUrl) {
       fetch(CFG.webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).catch(() => {}); // fail silently
+      }).catch(() => {});
     }
-    console.log('GTD submission:', payload);
   } else {
     // keep running after submit
     document.getElementById('gtd-modal').classList.remove('show');
@@ -856,7 +907,8 @@ window.addEventListener('touchend', ()=>{ if(state==='running') P.duck(false); }
    BOOT
 ══════════════════════════════════════════ */
 resize();
-try { best = parseInt(localStorage.getItem('bitkin_best') || '0'); document.getElementById('tb-best').textContent = String(best).padStart(5,'0'); } catch(e) {}
+// update best display now DOM is ready
+document.getElementById('tb-best').textContent = String(best).padStart(5,'0');
 window.addEventListener('load', ()=>{
   setTimeout(()=>{
     document.getElementById('loader').classList.add('hide');
