@@ -98,8 +98,8 @@ nav {
 }
 
 .subline {
-  font-size: 9px; line-height: 2.2; color: #555; letter-spacing: 1px;
-  max-width: 360px;
+  font-size: clamp(6px, 1.1vw, 9px); line-height: 1; color: #555; letter-spacing: 1px;
+  white-space: nowrap;
 }
 .subline strong { color: var(--ink); }
 
@@ -297,9 +297,9 @@ nav {
 ════════════════════════════════════════ */
 const CFG = {
   gameUrl:       'game.html',
-  twitterHandle: 'Bitkinart',      // without @
-  tweetId:       '2031052923585662993',  // ← your tweet ID here
-  gtdScore:      1000,              // score to earn GTD
+  twitterHandle: 'Bitkinart',      
+  tweetId:       '2031052923585662993', 
+  gtdScore:      1000,             
   ticker: ['BITKIN','1-BIT PIXEL ART','ETHEREUM','1169 SUPPLY','GET GTD','PROVE YOU\'RE A KIN'],
 };
 
