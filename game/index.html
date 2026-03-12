@@ -87,7 +87,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 
 <div id="shell">
   <div id="topbar">
-    <a class="tb-logo" href="/" onclick="return state==='idle'||state==='dead'||confirm('Leave game?')">BITKIN</a>
+    <a class="tb-logo" href="/">BITKIN</a>
     <div class="tb-scores">
       <div class="tb-cell"><span>SCORE</span><strong id="tb-score">00000</strong></div>
       <div class="tb-cell"><span>BEST</span><strong id="tb-best">00000</strong></div>
@@ -167,7 +167,7 @@ const CFG = {
   tweetId:       '2031052923585662993',
   siteUrl:       'bitkin.fun',
   indexUrl:      '/',
-  submitUrl: 'https://script.google.com/macros/s/AKfycbxafMlwNH1Edd6XdBc4wrXPC3vKmfwsP_x-gtdNXJyXZNuFngu6TNUDwQLvVsHnA-Ev/exec',
+  submitUrl:     'https://script.google.com/macros/s/AKfycbxafMlwNH1Edd6XdBc4wrXPC3vKmfwsP_x-gtdNXJyXZNuFngu6TNUDwQLvVsHnA-Ev/exec',
 };
 document.getElementById('tb-gtd-at').textContent   = CFG.gtdScore;
 document.getElementById('ov-start-sub').textContent = `REACH ${CFG.gtdScore} TO GET GTD`;
@@ -180,6 +180,17 @@ function ac(){
   if(_ac.state==='suspended') _ac.resume();
   return _ac;
 }
+// Mobile browsers block audio until a user gesture. Unlock on first tap.
+function unlockAudio(){
+  try{
+    const c=ac(), buf=c.createBuffer(1,1,22050), src=c.createBufferSource();
+    src.buffer=buf; src.connect(c.destination); src.start(0);
+  }catch(e){}
+  document.removeEventListener('touchstart', unlockAudio);
+  document.removeEventListener('mousedown',  unlockAudio);
+}
+document.addEventListener('touchstart', unlockAudio, {once:true});
+document.addEventListener('mousedown',  unlockAudio, {once:true});
 function sfxJump(){
   try{
     const c=ac(),o=c.createOscillator(),g=c.createGain();
@@ -318,10 +329,10 @@ function spr(data,ox,oy,ps){
 
 /* ══════════════ DIFFICULTY ══════════════ */
 const D = IS_MOBILE ? {
-  startSpd:0.003,maxSpdAdd:0.003,rampTicks:7200,
+  startSpd:0.0018,maxSpdAdd:0.002,rampTicks:10000, // very slow start
   scoreRate:1000/(6*60*60),
-  minGap:130,gapRandom:120,gapSlowdown:6000,
-  hitPad:3,chipYLo:0.20,chipYHi:0.30,maxBottles:2,postGap:12,
+  minGap:180,gapRandom:160,gapSlowdown:8000,        // huge gaps between obstacles
+  hitPad:5,chipYLo:0.26,chipYHi:0.34,maxBottles:1,postGap:18, // forgiving hit box
 } : {
   startSpd:0.005,maxSpdAdd:0.005,rampTicks:4800,
   scoreRate:1000/(4.5*60*60),
@@ -393,8 +404,13 @@ function spawnObs(){
     const bw=BOTTLE[0].length*ps;
     for(let i=0;i<n;i++) obs.push({d:BOTTLE,x:W+10+i*(bw+ps*2),w:bw,h:BOTTLE.length*ps,y:gnd-BOTTLE.length*ps});
   }else{
-    const yOff=(D.chipYLo+Math.random()*(D.chipYHi-D.chipYLo))*H;
-    obs.push({d:CHIP,x:W+10,w:CHIP[0].length*ps,h:CHIP.length*ps,y:gnd-yOff});
+    // On mobile skip flying CHIP (hardest obstacle) — spawn stool instead
+    if(IS_MOBILE){
+      obs.push({d:STOOL,x:W+10,w:STOOL[0].length*ps,h:STOOL.length*ps,y:gnd-STOOL.length*ps});
+    }else{
+      const yOff=(D.chipYLo+Math.random()*(D.chipYHi-D.chipYLo))*H;
+      obs.push({d:CHIP,x:W+10,w:CHIP[0].length*ps,h:CHIP.length*ps,y:gnd-yOff});
+    }
   }
 }
 function collides(a,b){
@@ -407,7 +423,7 @@ function startGame(){
   resize();spawnClouds();
   score=0;tick=0;spd=W*D.startSpd;nextObs=D.minGap+40;gtdTriggered=false;
   obs=[];dust=[];P.reset();
-  if(!_sessionStart)_sessionStart=Date.now();
+  if(!_sessionStart) _sessionStart=Date.now();
   _runStart=Date.now();
   document.getElementById('ov-start').classList.add('off');
   document.getElementById('ov-dead').classList.add('off');
@@ -606,7 +622,7 @@ function modalNext(){
       username:     document.getElementById('m-user').value.trim(),
       wallet:       w,
       score:        Math.floor(score),
-      sessionStart: _sessionStart,   // server does: (Date.now() - sessionStart) >= MIN_MS
+      sessionStart: _sessionStart,
       tweetId:      CFG.tweetId,
       timestamp:    new Date().toISOString(),
     };
