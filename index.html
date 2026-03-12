@@ -296,14 +296,15 @@ nav {
    CONFIG — edit these values only
 ════════════════════════════════════════ */
 const CFG = {
-  gameUrl:       'game.html',
-  twitterHandle: 'Bitkinart',      
-  tweetId:       '2031052923585662993', 
-  gtdScore:      1000,             
+  gameUrl: '/game',
+  twitterHandle: 'Bitkinart',      // without @
+  tweetId:       '2031052923585662993',  // ← your tweet ID here
+  gtdScore:      1000,              // score to earn GTD
   ticker: ['BITKIN','1-BIT PIXEL ART','ETHEREUM','1169 SUPPLY','GET GTD','PROVE YOU\'RE A KIN'],
 };
 
 /* ── TASKS ── */
+const STORAGE_KEY = 'bitkin_tasks_done';
 const done = { follow:false, like:false, rt:false };
 const URLS = {
   follow: () => `https://twitter.com/intent/follow?screen_name=${CFG.twitterHandle}`,
@@ -312,6 +313,20 @@ const URLS = {
 };
 
 document.getElementById('lbl-handle').textContent = CFG.twitterHandle.toUpperCase();
+
+// Returning player? skip straight to game after loader
+function checkReturning() {
+  try {
+    if (localStorage.getItem(STORAGE_KEY) === 'true') {
+      // hide requirements, show direct enter button
+      document.querySelector('.req-list').style.display = 'none';
+      document.getElementById('cta-hint').textContent = 'WELCOME BACK.';
+      const btn = document.getElementById('enter-btn');
+      btn.disabled = false;
+      btn.classList.add('unlocked');
+    }
+  } catch(e) {}
+}
 
 function doTask(key) {
   window.open(URLS[key](), '_blank');
@@ -327,6 +342,7 @@ function markDone(key) {
   document.getElementById('row-'+key).classList.add('faded');
 
   if (Object.values(done).every(Boolean)) {
+    try { localStorage.setItem(STORAGE_KEY, 'true'); } catch(e) {}
     const btn = document.getElementById('enter-btn');
     btn.disabled = false;
     btn.classList.add('unlocked');
@@ -338,6 +354,7 @@ function enterGame() { window.location.href = CFG.gameUrl; }
 
 /* ── LOADER ── */
 window.addEventListener('load', () => {
+  checkReturning();
   setTimeout(() => {
     document.getElementById('loader').classList.add('hide');
     initTicker();
