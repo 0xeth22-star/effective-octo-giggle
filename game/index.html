@@ -346,20 +346,21 @@ const PS  = IS_MOBILE ? 3 : 4;
 const GND = ()=> H - Math.floor(H*0.12);
 
 const P = {
-  x:0,y:0,vy:0,grounded:true,ducking:false,jumps:0,frame:0,
+  x:0,y:0,vy:0,grounded:true,ducking:false,jumps:0,frame:0,coyote:0,
   get w(){return CHAR_A[0].length*PS},
   get h(){return(this.ducking?CHAR_D:CHAR_A).length*PS},
   get spr(){return this.ducking?CHAR_D:(Math.floor(this.frame/10)%2===0?CHAR_A:CHAR_B)},
   reset(){
     this.x=Math.floor(W*0.1);this.y=GND()-this.h;
-    this.vy=0;this.grounded=true;this.ducking=false;this.jumps=0;this.frame=0;
+    this.vy=0;this.grounded=true;this.ducking=false;this.jumps=0;this.frame=0;this.coyote=0;
   },
   jump(){
-    if(this.jumps<1){
+    if(this.jumps<1 || this.coyote>0){
       sfxJump();
-      this.vy = -(H * 0.045);
+      this.vy = -(H * 0.047);
       this.grounded = false;
-      this.jumps++;
+      this.jumps = 1;
+      this.coyote = 0;
     }
   },
   duck(on){
@@ -369,10 +370,13 @@ const P = {
   },
   update(){
     this.frame++;
-    if(!this.grounded){
-      this.vy+=H*0.0028;this.y+=this.vy;
+    if(this.grounded){
+      this.coyote=6; // frames you can still jump after walking off edge
+    } else {
+      if(this.coyote>0) this.coyote--;
+      this.vy+=H*0.0028; this.y+=this.vy;
       const floor=GND()-this.h;
-      if(this.y>=floor){this.y=floor;this.vy=0;this.grounded=true;this.jumps=0;}
+      if(this.y>=floor){this.y=floor;this.vy=0;this.grounded=true;this.jumps=0;this.coyote=6;}
     }
   },
   draw(){
