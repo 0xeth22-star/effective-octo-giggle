@@ -251,29 +251,20 @@ nav {
 
         <div class="req-row" id="row-follow">
           <div class="req-num" id="num-follow">1</div>
-          <span class="req-label">FOLLOW @BITKINART</span>
-          <button class="req-btn" id="btn-follow"
-            onclick="doTask('follow','https://twitter.com/intent/follow?screen_name=Bitkinart')">
-            FOLLOW →
-          </button>
+          <span class="req-label">FOLLOW @<span id="lbl-handle"></span></span>
+          <button class="req-btn" id="btn-follow" onclick="doTask('follow')">FOLLOW →</button>
         </div>
 
         <div class="req-row" id="row-like">
           <div class="req-num" id="num-like">2</div>
           <span class="req-label">LIKE THE POST</span>
-          <button class="req-btn" id="btn-like"
-            onclick="doTask('like','https://twitter.com/intent/like?tweet_id=POST_ID')">
-            LIKE →
-          </button>
+          <button class="req-btn" id="btn-like" onclick="doTask('like')">LIKE →</button>
         </div>
 
         <div class="req-row" id="row-rt">
           <div class="req-num" id="num-rt">3</div>
           <span class="req-label">RETWEET THE POST</span>
-          <button class="req-btn" id="btn-rt"
-            onclick="doTask('rt','https://twitter.com/intent/retweet?tweet_id=POST_ID')">
-            RT →
-          </button>
+          <button class="req-btn" id="btn-rt" onclick="doTask('rt')">RT →</button>
         </div>
 
       </div>
@@ -301,17 +292,29 @@ nav {
 
 
 <script>
-/* ── CONFIG ── */
+/* ════════════════════════════════════════
+   CONFIG — edit these values only
+════════════════════════════════════════ */
 const CFG = {
-  gameUrl: 'game.html',  // ← page to redirect to
-  ticker:  ['BITKIN','1-BIT PIXEL ART','ETHEREUM','1169 SUPPLY','RUN TO EARN WL','PROVE YOU\'RE A KIN','NO SKILL NO SPOT'],
+  gameUrl:       'game.html',
+  twitterHandle: 'Bitkinart',      // without @
+  tweetId:       '2031052923585662993',  // ← your tweet ID here
+  gtdScore:      1000,              // score to earn GTD
+  ticker: ['BITKIN','1-BIT PIXEL ART','ETHEREUM','1169 SUPPLY','GET GTD','PROVE YOU\'RE A KIN'],
 };
 
 /* ── TASKS ── */
 const done = { follow:false, like:false, rt:false };
+const URLS = {
+  follow: () => `https://twitter.com/intent/follow?screen_name=${CFG.twitterHandle}`,
+  like:   () => `https://twitter.com/intent/like?tweet_id=${CFG.tweetId}`,
+  rt:     () => `https://twitter.com/intent/retweet?tweet_id=${CFG.tweetId}`,
+};
 
-function doTask(key, url) {
-  window.open(url, '_blank');
+document.getElementById('lbl-handle').textContent = CFG.twitterHandle.toUpperCase();
+
+function doTask(key) {
+  window.open(URLS[key](), '_blank');
   setTimeout(() => markDone(key), 1600);
 }
 
