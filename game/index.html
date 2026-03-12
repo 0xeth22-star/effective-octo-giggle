@@ -255,7 +255,7 @@ function sfxGTD(){
 }
 
 /* ══════════════ PLATFORM ══════════════ */
-const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 680;
+const IS_MOBILE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 /* ══════════════ CANVAS ══════════════ */
 const canvas = document.getElementById('c');
