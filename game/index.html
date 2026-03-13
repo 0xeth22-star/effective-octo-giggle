@@ -328,11 +328,18 @@ function spr(data,ox,oy,ps){
 }
 
 /* ══════════════ DIFFICULTY ══════════════ */
-const D = {
-  startSpd:0.007, maxSpdAdd:0.005, rampTicks:4000,
+const D = IS_MOBILE ? {
+  // MOBILE — slower, bigger gaps, very forgiving
+  startSpd:0.005, maxSpdAdd:0.003, rampTicks:6000,
+  scoreRate:1000/(5*60*60),
+  minGap:150, gapRandom:130, gapSlowdown:6000,
+  hitPad:2.5, chipYLo:0.22, chipYHi:0.30, maxBottles:1, postGap:26,
+} : {
+  // DESKTOP — normal speed, slight ease vs before
+  startSpd:0.006, maxSpdAdd:0.004, rampTicks:4500,
   scoreRate:1000/(4*60*60),
-  minGap:100, gapRandom:80, gapSlowdown:4000,
-  hitPad:1.5, chipYLo:0.18, chipYHi:0.26, maxBottles:2, postGap:10,
+  minGap:95, gapRandom:75, gapSlowdown:4000,
+  hitPad:1.5, chipYLo:0.16, chipYHi:0.24, maxBottles:2, postGap:22,
 };
 
 /* ══════════════ STATE ══════════════ */
@@ -357,7 +364,7 @@ const P = {
   jump(){
     if(this.jumps<1 || this.coyote>0){
       sfxJump();
-      this.vy = -(H * 0.047);
+      this.vy = -(H * 0.052); // enough height to clear tallest obstacle
       this.grounded = false;
       this.jumps = 1;
       this.coyote = 0;
@@ -374,7 +381,7 @@ const P = {
       this.coyote=6; // frames you can still jump after walking off edge
     } else {
       if(this.coyote>0) this.coyote--;
-      this.vy+=H*0.0028; this.y+=this.vy;
+      this.vy+=H*0.0022; this.y+=this.vy;
       const floor=GND()-this.h;
       if(this.y>=floor){this.y=floor;this.vy=0;this.grounded=true;this.jumps=0;this.coyote=6;}
     }
@@ -395,9 +402,13 @@ function spawnObs(){
   }else if(r<0.52){
     obs.push({d:CARDS,x:W+10,w:CARDS[0].length*ps,h:CARDS.length*ps,y:gnd-CARDS.length*ps});
   }else if(r<0.72){
+    // Single wide obstacle — player jumps over the whole thing in one arc
     const pw=POST[0].length*ps;
-    obs.push({d:POST,x:W+10,w:pw,h:POST.length*ps,y:gnd-POST.length*ps});
-    obs.push({d:POST,x:W+10+pw+ps*D.postGap,w:pw,h:POST.length*ps,y:gnd-POST.length*ps});
+    const gateW = pw*2 + ps*6; // total width: post + gap + post
+    obs.push({
+      type:'gate', x:W+10, w:gateW, h:POST.length*ps, y:gnd-POST.length*ps,
+      pw:pw, ps:ps
+    });
   }else if(r<0.86){
     const n=Math.floor(Math.random()*D.maxBottles)+1;
     const bw=BOTTLE[0].length*ps;
@@ -461,7 +472,17 @@ function update(){
   obs.forEach(o=>o.x-=spd);
   obs=obs.filter(o=>o.x+o.w>-20);
   const pb={x:P.x,y:P.y,w:P.w,h:P.h};
-  for(const o of obs){if(collides(pb,o)){die();return;}}
+  for(const o of obs){
+    if(o.type==='gate'){
+      // Collide with left post, right post, and top bar separately
+      const lp={x:o.x,           y:o.y,       w:o.pw,      h:o.h};
+      const rp={x:o.x+o.pw+o.ps*6, y:o.y,     w:o.pw,      h:o.h};
+      const bar={x:o.x,          y:o.y,        w:o.w,       h:o.ps*2};
+      if(collides(pb,lp)||collides(pb,rp)||collides(pb,bar)){die();return;}
+    } else {
+      if(collides(pb,o)){die();return;}
+    }
+  }
 }
 function die(){
   state='dead';
@@ -543,7 +564,19 @@ function render(){
   const cityOff=Math.floor(tick*spd*0.08)%W;
   ctx.drawImage(bgCanvas, cityOff,0,W,H, 0,0,W,H);
 
-  obs.forEach(function(o){spr(o.d,o.x,o.y,PS);});
+  obs.forEach(function(o){
+    if(o.type==='gate'){
+      // Draw left post
+      spr(POST,o.x,o.y,o.ps);
+      // Draw right post
+      spr(POST,o.x+o.pw+o.ps*6,o.y,o.ps);
+      // Draw connecting bar at top
+      ctx.fillStyle='#2a2a38';
+      ctx.fillRect(o.x,o.y,o.w,o.ps*2);
+    } else {
+      spr(o.d,o.x,o.y,PS);
+    }
+  });
   P.draw();
 
   if(!IS_MOBILE){
