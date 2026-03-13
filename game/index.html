@@ -140,6 +140,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
           </div>
           <div class="m-step" id="ms-done">
             <div class="ov-sub" id="done-copy">you're on the list.<br>mint details hit your feed when it's time.<br>watch @<span id="done-handle"></span>.</div>
+            <div id="submit-status" style="font-size:10px;opacity:0.5;margin-top:8px;word-break:break-all;"></div>
           </div>
         </div>
         <div class="modal-ft" id="m-foot">
@@ -161,13 +162,13 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <script>
 /* ══════════════ CONFIG ══════════════ */
 const CFG = {
-  gtdScore:      100,
+  gtdScore:      1000,
   gtdCap:        2000,
   twitterHandle: 'Bitkinart',
   tweetId:       '2031052923585662993',
   siteUrl:       'bitkin.fun',
   indexUrl:      '/',
-  submitUrl:     'https://script.google.com/macros/s/AKfycbwRGEJ31eAT3VF-93aK_WpjvvFf7IHtzoTQOx8jUitkUomFGw6ayuIOKby_F6MaTyMk/exec',
+  submitUrl:     'https://script.google.com/macros/s/AKfycbzTvEdAxhzYpr8LxRJYYc-4pxFiaB678tUDyZJ9rm3IKClvjJZNbkkPKw_WAJKWEJuM/exec',
 };
 document.getElementById('tb-gtd-at').textContent   = CFG.gtdScore;
 document.getElementById('ov-start-sub').textContent = `REACH ${CFG.gtdScore} TO GET GTD`;
@@ -329,10 +330,10 @@ function spr(data,ox,oy,ps){
 
 /* ══════════════ DIFFICULTY ══════════════ */
 const D = IS_MOBILE ? {
-  // MOBILE — slower, bigger gaps, very forgiving
-  startSpd:0.005, maxSpdAdd:0.003, rampTicks:6000,
-  scoreRate:1000/(5*60*60),
-  minGap:150, gapRandom:130, gapSlowdown:6000,
+  // MOBILE
+  startSpd:0.007, maxSpdAdd:0.004, rampTicks:4500,
+  scoreRate:1000/(4*60*60),
+  minGap:130, gapRandom:100, gapSlowdown:5000,
   hitPad:2.5, chipYLo:0.22, chipYHi:0.30, maxBottles:1, postGap:26,
 } : {
   // DESKTOP — normal speed, slight ease vs before
@@ -657,7 +658,19 @@ function modalNext(){
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
-    }).catch(()=>{});
+    })
+    .then(r=>r.text())
+    .then(function(msg){
+      // Show server response so we can debug
+      var el = document.getElementById('submit-status');
+      if(el) el.textContent = msg;
+      console.log('SUBMIT RESPONSE:', msg);
+    })
+    .catch(function(err){
+      var el = document.getElementById('submit-status');
+      if(el) el.textContent = 'network error: ' + err.message;
+      console.log('SUBMIT ERROR:', err);
+    });
   }
 }
 
