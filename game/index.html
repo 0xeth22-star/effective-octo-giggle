@@ -169,6 +169,8 @@ const CFG = {
   siteUrl:       'bitkin.fun',
   indexUrl:      '/',
   submitUrl:     'https://script.google.com/macros/s/AKfycbzTvEdAxhzYpr8LxRJYYc-4pxFiaB678tUDyZJ9rm3IKClvjJZNbkkPKw_WAJKWEJuM/exec',
+  sbUrl:         'https://lzbaigftfldlranbhrkr.supabase.co',
+  sbKey:         'sb_publishable_CzmXU-7BPlVzWilyJUkksA_RN8Tovd_',
 };
 document.getElementById('tb-gtd-at').textContent   = CFG.gtdScore;
 document.getElementById('ov-start-sub').textContent = `REACH ${CFG.gtdScore} TO GET GTD`;
@@ -654,21 +656,30 @@ function modalNext(){
       timestamp:    new Date().toISOString(),
     };
 
-    fetch(CFG.submitUrl, {
+    fetch(CFG.sbUrl + '/functions/v1/submit-gtd', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        CFG.sbKey,
+        'Authorization': 'Bearer ' + CFG.sbKey,
+      },
+      body: JSON.stringify(payload),
     })
-    .then(r=>r.text())
-    .then(function(msg){
-      // Show server response so we can debug
+    .then(function(r){
       var el = document.getElementById('submit-status');
-      if(el) el.textContent = msg;
-      console.log('SUBMIT RESPONSE:', msg);
+      if(r.status === 201){
+        if(el) el.textContent = 'recorded ✓';
+        console.log('SUBMIT: success');
+      } else {
+        r.text().then(function(t){
+          if(el) el.textContent = r.status + ': ' + t;
+          console.log('SUBMIT ERROR:', r.status, t);
+        });
+      }
     })
     .catch(function(err){
       var el = document.getElementById('submit-status');
-      if(el) el.textContent = 'network error: ' + err.message;
+      if(el) el.textContent = 'network error';
       console.log('SUBMIT ERROR:', err);
     });
   }
