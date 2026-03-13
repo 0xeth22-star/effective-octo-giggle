@@ -348,7 +348,7 @@ const D = IS_MOBILE ? {
 /* ══════════════ STATE ══════════════ */
 let state='idle', score, spd, tick, nextObs, gtdTriggered;
 let raf;
-let _sessionStart=null,_runStart=null,_totalMs=0;
+let _sessionStart=Date.now(),_runStart=null,_totalMs=0;
 let best=0;
 try{best=parseInt(localStorage.getItem('bitkin_best')||'0')||0;}catch(e){}
 
@@ -433,7 +433,6 @@ function startGame(){
   resize();spawnClouds();
   score=0;tick=0;spd=W*D.startSpd;nextObs=D.minGap+40;gtdTriggered=false;
   obs=[];dust=[];P.reset();
-  if(!_sessionStart) _sessionStart=Date.now();
   _runStart=Date.now();
   document.getElementById('ov-start').classList.add('off');
   document.getElementById('ov-dead').classList.add('off');
