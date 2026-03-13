@@ -167,7 +167,7 @@ const CFG = {
   tweetId:       '2031052923585662993',
   siteUrl:       'bitkin.fun',
   indexUrl:      '/',
-  submitUrl:     'https://script.google.com/macros/s/AKfycbyF-QpRWmHw7rkD_8vgw4_slu6wBVRxSr3uUPuL2ApKg4zwB4JQsOuhsxTb0ehk7kDe/exec',
+  submitUrl:     'https://script.google.com/macros/s/AKfycbzTvEdAxhzYpr8LxRJYYc-4pxFiaB678tUDyZJ9rm3IKClvjJZNbkkPKw_WAJKWEJuM/exec',
 };
 document.getElementById('tb-gtd-at').textContent   = CFG.gtdScore;
 document.getElementById('ov-start-sub').textContent = `REACH ${CFG.gtdScore} TO GET GTD`;
@@ -402,12 +402,13 @@ function spawnObs(){
   }else if(r<0.52){
     obs.push({d:CARDS,x:W+10,w:CARDS[0].length*ps,h:CARDS.length*ps,y:gnd-CARDS.length*ps});
   }else if(r<0.72){
-    // Single wide obstacle — player jumps over the whole thing in one arc
+    // Single gate — one arc clears it, gap wide enough for mobile
     const pw=POST[0].length*ps;
-    const gateW = pw*2 + ps*6; // total width: post + gap + post
+    const gap = IS_MOBILE ? ps*10 : ps*8;
+    const gateW = pw*2 + gap;
     obs.push({
       type:'gate', x:W+10, w:gateW, h:POST.length*ps, y:gnd-POST.length*ps,
-      pw:pw, ps:ps
+      pw:pw, ps:ps, gap:gap
     });
   }else if(r<0.86){
     const n=Math.floor(Math.random()*D.maxBottles)+1;
@@ -476,7 +477,7 @@ function update(){
     if(o.type==='gate'){
       // Collide with left post, right post, and top bar separately
       const lp={x:o.x,           y:o.y,       w:o.pw,      h:o.h};
-      const rp={x:o.x+o.pw+o.ps*6, y:o.y,     w:o.pw,      h:o.h};
+      const rp={x:o.x+o.pw+o.gap,  y:o.y,     w:o.pw,      h:o.h};
       const bar={x:o.x,          y:o.y,        w:o.w,       h:o.ps*2};
       if(collides(pb,lp)||collides(pb,rp)||collides(pb,bar)){die();return;}
     } else {
@@ -566,11 +567,8 @@ function render(){
 
   obs.forEach(function(o){
     if(o.type==='gate'){
-      // Draw left post
       spr(POST,o.x,o.y,o.ps);
-      // Draw right post
-      spr(POST,o.x+o.pw+o.ps*6,o.y,o.ps);
-      // Draw connecting bar at top
+      spr(POST,o.x+o.pw+o.gap,o.y,o.ps);
       ctx.fillStyle='#2a2a38';
       ctx.fillRect(o.x,o.y,o.w,o.ps*2);
     } else {
